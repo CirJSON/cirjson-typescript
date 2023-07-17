@@ -1,0 +1,10 @@
+{
+  "name": "@cirjson/core",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "unbuild"
+  },
+  "devDependencies": {
+    "unbuild": "^1.2.1"
+  }
+}
