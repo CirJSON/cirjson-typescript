@@ -1,4 +1,4 @@
-import {WrongCirJsonContextError} from "./WrongCirJsonContextError";
+import { WrongCirJsonContextError } from "./WrongCirJsonContextError"
 
 export type ContextMode = "stringify" | "parse"
 

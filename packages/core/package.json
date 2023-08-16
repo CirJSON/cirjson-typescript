@@ -4,6 +4,27 @@
   "scripts": {
     "build": "unbuild"
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs"
+    },
+    "./parse": {
+      "import": "./dist/parse.mjs",
+      "types": "./dist/parse.d.ts",
+      "require": "./dist/parse.cjs"
+    },
+    "./stringify": {
+      "import": "./dist/stringify.mjs",
+      "types": "./dist/stringify.d.ts",
+      "require": "./dist/stringify.cjs"
+    }
+  },
+  "dependencies": {},
   "devDependencies": {
     "unbuild": "^1.2.1"
   }

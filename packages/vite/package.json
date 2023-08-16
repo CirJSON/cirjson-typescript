@@ -4,6 +4,17 @@
   "scripts": {
     "build": "unbuild"
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {},
   "devDependencies": {
     "unbuild": "^1.2.1"
   }
