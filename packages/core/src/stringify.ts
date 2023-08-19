@@ -35,7 +35,7 @@ function stringifyNumber(value: number): string {
 }
 
 function stringifyString(value: string) {
-  return `"${value}"`
+  return JSON.stringify(value)
 }
 
 function stringifyStructure(value: ComplexStructure | null, context: CirJsonStringifyContext): string {
