@@ -1,4 +1,5 @@
 import { stringify } from "../src/stringify"
+import { ArrayStructure, ObjectStructure } from "../src/baseTypes"
 
 describe("stringify", () => {
   it("should return undefined for values with type 'function', 'undefined', and 'symbols'", () => {
@@ -50,7 +51,7 @@ describe("stringify", () => {
     })
   })
 
-  describe("complex values", () => {
+  describe("complex structures", () => {
     it("should stringify object structures", () => {
       expect(stringify({})).toEqual('{"__cirJsonId__":"1"}')
 
@@ -59,8 +60,64 @@ describe("stringify", () => {
       )
 
       expect(stringify({ foo: { bar: 1, buzz: false }, toto: "tata" })).toEqual(
-        '{"__cirJsonId__":"1","foo":1,"bar":true,"toto":"tata"}',
+        '{"__cirJsonId__":"1","foo":{"__cirJsonId__":"2","bar":1,"buzz":false},"toto":"tata"}',
       )
+
+      expect(stringify({ foo: ["bar", 1, false], toto: "tata" })).toEqual(
+        '{"__cirJsonId__":"1","foo":["2","bar",1,false],"toto":"tata"}',
+      )
+
+      expect(stringify({ foo: [{ bar: 1, buzz: false }], toto: "tata" })).toEqual(
+        '{"__cirJsonId__":"1","foo":["2",{"__cirJsonId__":"3","bar":1,"buzz":false}],"toto":"tata"}',
+      )
+
+      expect(stringify({ foo: 42, bar: undefined, buzz: null, toto() {} })).toEqual(
+        '{"__cirJsonId__":"1","foo":42,"buzz":null}',
+      )
+    })
+
+    it("should stringify array structures", () => {
+      expect(stringify([])).toEqual('["1"]')
+      expect(stringify(["foo"])).toEqual('["1","foo"]')
+      expect(stringify([1])).toEqual('["1",1]')
+      expect(stringify([true])).toEqual('["1",true]')
+
+      expect(stringify([{ bar: 1, buzz: false }])).toEqual('["1",{"__cirJsonId__":"2","bar":1,"buzz":false}]')
+      expect(stringify([["foo"], { bar: 1, buzz: false }])).toEqual(
+        '["1",["2","foo"],{"__cirJsonId__":"3","bar":1,"buzz":false}]',
+      )
+    })
+
+    describe("recursive complex structures", () => {
+      it("should stringify recursive object structures", () => {
+        const obj1: ObjectStructure = {}
+        obj1.foo = obj1
+        expect(stringify(obj1)).toEqual('{"__cirJsonId__":"1","foo":{"__cirJsonId__":"1"}}')
+
+        const obj2: ObjectStructure = { bar: true, toto: "tata" }
+        obj2.foo = obj2
+        expect(stringify(obj2)).toEqual('{"__cirJsonId__":"1","bar":true,"toto":"tata","foo":{"__cirJsonId__":"1"}}')
+
+        const obj3 = { foo: [] as Array<ObjectStructure>, bar: true, toto: "tata" }
+        obj3.foo.push(obj3)
+        expect(stringify(obj3)).toEqual(
+          '{"__cirJsonId__":"1","foo":["2",{"__cirJsonId__":"1"}],"bar":true,"toto":"tata"}',
+        )
+      })
+
+      it("should stringify recursive array structures", () => {
+        const arr1: ArrayStructure<unknown> = []
+        arr1.push(arr1)
+        expect(stringify(arr1)).toEqual('["1",["1"]]')
+
+        const arr2: ArrayStructure<unknown> = ["foo", 42, true]
+        arr2.push(arr2)
+        expect(stringify(arr2)).toEqual('["1","foo",42,true,["1"]]')
+
+        const arr3: ArrayStructure<unknown> = ["foo", {}, true]
+        ;(arr3[1] as ObjectStructure).foo = arr3
+        expect(stringify(arr3)).toEqual('["1","foo",{"__cirJsonId__":"2","foo":["1"]},true]')
+      })
     })
   })
 })
