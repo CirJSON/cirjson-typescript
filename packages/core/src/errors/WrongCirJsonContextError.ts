@@ -1,5 +1,5 @@
 import { CirJsonError } from "./CirJsonError"
-import { ContextMode } from "./CirJsonContext"
+import { ContextMode } from "../CirJsonContext"
 
 export class WrongCirJsonContextError extends CirJsonError {
   constructor(mode: ContextMode) {

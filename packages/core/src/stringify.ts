@@ -1,5 +1,5 @@
 import { CirJsonStringifyContext } from "./internal/CirJsonStringifyContext"
-import { CirJsonError } from "./CirJsonError"
+import { CirJsonError } from "./errors/CirJsonError"
 import { ArrayStructure, ComplexStructure, isArrayStructure, isObjectStructure, ObjectStructure } from "./baseTypes"
 
 export function stringify<T>(value: T): string | undefined {
