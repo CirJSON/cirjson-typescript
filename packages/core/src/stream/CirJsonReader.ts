@@ -1,4 +1,5 @@
-import { CirJsonScope } from "./CirJsonScope";
+import { CirJsonScope } from "./CirJsonScope"
+import { IllegalCirJsonStateError } from "../errors/IllegalCirJsonStateError"
 
 const MIN_INCOMPLETE_INTEGER = Number.MIN_SAFE_INTEGER
 
@@ -96,5 +97,18 @@ export class CirJsonReader {
     if (p === PEEKED_NONE) {
       p = this.doPeek()
     }
+
+    if (p === PEEKED_BEGIN_ARRAY) {
+      this.push(CirJsonScope.EMPTY_ARRAY)
+      this.pathIndices[this.stackSize - 1] = 0
+      this.peeked = PEEKED_NONE
+    } else {
+      throw this.unexpectedTokenError("BEGIN_ARRAY")
+    }
+  }
+
+  private unexpectedTokenError(expected: string): IllegalCirJsonStateError {
+    const peeked = this.peek()
+    return new IllegalCirJsonStateError(`Expected ${expected} but was ${peeked}${this.locationString()}`)
   }
 }
