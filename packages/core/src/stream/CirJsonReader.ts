@@ -1,5 +1,10 @@
 import { CirJsonScope } from "./CirJsonScope"
 import { IllegalCirJsonStateError } from "../errors/IllegalCirJsonStateError"
+import { CirJsonError } from "../errors/CirJsonError"
+import { CirJsonToken } from "./CirJsonToken"
+import { arrayOfNulls, arrayCopy } from "../utils/arrayUtils"
+import { MalformedCirJsonError } from "../errors/MalformedCirJsonError"
+import { StringReader } from "./StringReader"
 
 const MIN_INCOMPLETE_INTEGER = Number.MIN_SAFE_INTEGER
 
@@ -33,18 +38,8 @@ const NUMBER_CHAR_EXP_E = 5
 const NUMBER_CHAR_EXP_SIGN = 6
 const NUMBER_CHAR_EXP_DIGIT = 7
 
-function arrayOfNulls<T>(size: number): Array<T | null> {
-  const array: Array<T | null> = []
-
-  while (size > array.length) {
-    array.push(null)
-  }
-
-  return array
-}
-
 export class CirJsonReader {
-  private input: string
+  private input: StringReader
 
   /**
    * Use a manual buffer to easily read and unread upcoming characters, and
@@ -88,10 +83,13 @@ export class CirJsonReader {
   private pathIndices = arrayOfNulls<number>(32)
 
   constructor(input: string) {
-    this.input = input
+    this.input = new StringReader(input)
     this.stack[this.stackSize++] = CirJsonScope.EMPTY_DOCUMENT
   }
 
+  /**
+   * Consumes the next token from the CirJSON stream and asserts that it is the beginning of a new array.
+   */
   beginArray() {
     let p = this.peeked
     if (p === PEEKED_NONE) {
@@ -105,6 +103,175 @@ export class CirJsonReader {
     } else {
       throw this.unexpectedTokenError("BEGIN_ARRAY")
     }
+  }
+
+  peek(): CirJsonToken {
+    let p = this.peeked
+    if (p === PEEKED_NONE) {
+      p = this.doPeek()
+    }
+
+    switch (p) {
+      case PEEKED_BEGIN_OBJECT:
+        return CirJsonToken.BEGIN_OBJECT
+      case PEEKED_END_OBJECT:
+        return CirJsonToken.END_OBJECT
+      case PEEKED_BEGIN_ARRAY:
+        return CirJsonToken.BEGIN_ARRAY
+      case PEEKED_END_ARRAY:
+        return CirJsonToken.END_ARRAY
+      case PEEKED_SINGLE_QUOTED_NAME:
+      case PEEKED_DOUBLE_QUOTED_NAME:
+      case PEEKED_UNQUOTED_NAME:
+        return CirJsonToken.NAME
+      case PEEKED_TRUE:
+      case PEEKED_FALSE:
+        return CirJsonToken.BOOLEAN
+      case PEEKED_NULL:
+        return CirJsonToken.NULL
+      case PEEKED_SINGLE_QUOTED:
+      case PEEKED_DOUBLE_QUOTED:
+      case PEEKED_UNQUOTED:
+      case PEEKED_BUFFERED:
+        return CirJsonToken.STRING
+      case PEEKED_LONG:
+      case PEEKED_NUMBER:
+        return CirJsonToken.NUMBER
+      case PEEKED_EOF:
+        return CirJsonToken.END_DOCUMENT
+      default:
+        throw new CirJsonError("Well that's weird. Peeked failed")
+    }
+  }
+
+  doPeek(): number {
+    const peekStack = this.stack[this.stackSize - 1] as number
+
+    const arrayPeek = this.doArrayPeek(peekStack)
+    if (arrayPeek !== undefined) {
+      return arrayPeek
+    }
+  }
+
+  private doArrayPeek(peekStack: number): number | undefined {
+    if (peekStack === CirJsonScope.EMPTY_ARRAY) {
+      this.stack[this.stackSize - 1] = CirJsonScope.NON_ID_ARRAY
+    } else {
+      const c = this.nextNonWhitespace(true)
+      if (peekStack === CirJsonScope.NON_ID_ARRAY && c !== '"') {
+        throw new MalformedCirJsonError(`Expected '"' to signify an array ID, got ${c} instead.`)
+      } else {
+        switch (c) {
+          case "]":
+            return (this.peeked = PEEKED_END_ARRAY)
+          case ",":
+            break
+          default:
+            throw this.syntaxError("Unterminated array")
+        }
+      }
+    }
+  }
+
+  private push(newTop: number) {
+    if (this.stackSize === this.stack.length) {
+      const newLength = this.stackSize * 2
+      this.stack = arrayCopy(this.stack, newLength)
+      this.pathIndices = arrayCopy(this.pathIndices, newLength)
+      this.pathNames = arrayCopy(this.pathNames, newLength)
+    }
+    this.stack[this.stackSize++] = newTop
+  }
+
+  private fillBuffer(minimum: number) {
+    const buffer = this.buffer
+    this.lineStart -= this.pos
+    if (this.limit !== this.pos) {
+      this.limit -= this.pos
+      buffer.copyWithin(0, this.pos, this.limit - this.pos)
+    } else {
+      this.limit = 0
+    }
+
+    this.pos = 0
+    let total: number
+    while ((total = this.input.read(buffer, this.limit, buffer.length - this.limit)) !== -1) {
+      this.limit += total
+
+      if (this.lineNumber === 0 && this.lineStart === 0 && this.limit > 0 && buffer[0] === "\ufeff") {
+        this.pos++
+        this.lineStart++
+        minimum++
+      }
+
+      if (this.limit >= minimum) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * @param toFind a string to search for. Must not contain a newline.
+   */
+  private skipTo(toFind: string): boolean {
+    const length = toFind.length
+
+    outer: for (; this.pos + length <= this.limit || this.fillBuffer(length); this.pos++) {
+      if (this.buffer[this.pos] == "\n") {
+        this.lineNumber++
+        this.lineStart = this.pos + 1
+        continue
+      }
+      for (let c = 0; c < length; c++) {
+        if (this.buffer[this.pos + c] != toFind.charAt(c)) {
+          continue outer
+        }
+      }
+      return true
+    }
+
+    return false
+  }
+
+  private locationString(): string {
+    const line = this.lineNumber + 1
+    const column = this.pos - this.lineStart + 1
+    return ` at line ${line} column ${column} path ${this.getPath()}`
+  }
+
+  private getPath(): string
+  private getPath(usePreviousPath: boolean): string
+  private getPath(usePreviousPath = false): string {
+    let result = "$"
+    for (let i = 0; i < this.stackSize; i++) {
+      switch (this.stack[i]) {
+        case CirJsonScope.EMPTY_ARRAY:
+        case CirJsonScope.NONEMPTY_ARRAY:
+          let pathIndex = this.pathIndices[i] as number
+          // If index is last path element it points to next array element; have to decrement
+          if (usePreviousPath && pathIndex > 0 && i == this.stackSize - 1) {
+            pathIndex--
+          }
+          result += "[" + pathIndex + "]"
+          break
+        case CirJsonScope.EMPTY_OBJECT:
+        case CirJsonScope.DANGLING_NAME:
+        case CirJsonScope.NONEMPTY_OBJECT:
+          result += "."
+          if (this.pathNames[i] != null) {
+            result += this.pathNames[i]
+          }
+          break
+        case CirJsonScope.NONEMPTY_DOCUMENT:
+        case CirJsonScope.EMPTY_DOCUMENT:
+        case CirJsonScope.CLOSED:
+          break
+      }
+    }
+
+    return result
   }
 
   private unexpectedTokenError(expected: string): IllegalCirJsonStateError {
