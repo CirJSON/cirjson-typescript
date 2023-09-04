@@ -22,7 +22,7 @@ export const CirJsonScope = {
   EMPTY_OBJECT: 4,
 
   /**
-   * An object with no name/value pairs the `__cirJsonId__`/ID pair before it is closed.
+   * An object without the `__cirJsonId__`/ID pair before it is closed.
    */
   NON_ID_OBJECT: 5,
 

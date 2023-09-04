@@ -207,13 +207,18 @@ export class CirJsonReader {
     if (arrayPeek !== undefined) {
       return arrayPeek
     }
+
+    const objectPeek = this.doObjectPeek(peekStack)
+    if (objectPeek !== undefined) {
+      return objectPeek
+    }
   }
 
   private doArrayPeek(peekStack: number): number | undefined {
     if (peekStack === CirJsonScope.EMPTY_ARRAY) {
       this.stack[this.stackSize - 1] = CirJsonScope.NON_ID_ARRAY
     } else {
-      const c = this.nextNonWhitespace(true)
+      const c = String.fromCharCode(this.nextNonWhitespace(true))
       if (peekStack === CirJsonScope.NON_ID_ARRAY && c !== '"') {
         throw new MalformedCirJsonError(`Expected '"' to signify an array ID, got ${c} instead.`)
       } else {
@@ -225,6 +230,18 @@ export class CirJsonReader {
           default:
             throw this.syntaxError("Unterminated array")
         }
+      }
+    }
+  }
+
+  private doObjectPeek(peekStack: number): number | undefined {
+    if (peekStack === CirJsonScope.EMPTY_OBJECT) {
+      this.stack[this.stackSize - 1] = CirJsonScope.NON_ID_OBJECT
+      const c = String.fromCharCode(this.nextNonWhitespace(true))
+      if (c === '"') {
+        return (this.peeked = PEEKED_DOUBLE_QUOTED)
+      } else {
+        throw this.syntaxError("Needs the object ID")
       }
     }
   }
@@ -325,13 +342,13 @@ export class CirJsonReader {
         this.pos = p
         return c!.charCodeAt(0)
       }
-
-      if (throwOnEof) {
-        throw new CirJsonError("End of input" + this.locationString())
-      } else {
-        return -1
-      }
     }
+
+    if (!throwOnEof) {
+      return -1
+    }
+
+    throw new CirJsonError("End of input" + this.locationString())
   }
 
   /**
