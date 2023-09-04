@@ -105,6 +105,62 @@ export class CirJsonReader {
     }
   }
 
+  /**
+   * Consumes the next token from the CirJSON stream and asserts that it is the
+   * end of the current array.
+   */
+  endArray() {
+    let p = this.peeked
+    if (p == PEEKED_NONE) {
+      p = this.doPeek()
+    }
+    if (p == PEEKED_END_ARRAY) {
+      this.stackSize--
+      this.pathIndices[this.stackSize - 1]!++
+      this.peeked = PEEKED_NONE
+    } else {
+      throw this.unexpectedTokenError("END_ARRAY")
+    }
+  }
+
+  /**
+   * Consumes the next token from the JSON stream and asserts that it is the
+   * beginning of a new object.
+   */
+  beginObject() {
+    let p = this.peeked
+    if (p == PEEKED_NONE) {
+      p = this.doPeek()
+    }
+
+    if (p == PEEKED_BEGIN_OBJECT) {
+      this.push(CirJsonScope.EMPTY_OBJECT)
+      this.peeked = PEEKED_NONE
+    } else {
+      throw this.unexpectedTokenError("BEGIN_OBJECT")
+    }
+  }
+
+  /**
+   * Consumes the next token from the JSON stream and asserts that it is the
+   * end of the current object.
+   */
+  endObject() {
+    let p = this.peeked
+    if (p == PEEKED_NONE) {
+      p = this.doPeek()
+    }
+
+    if (p == PEEKED_END_OBJECT) {
+      this.stackSize--
+      this.pathNames[this.stackSize] = null // Free the last path name so that it can be garbage collected!
+      this.pathIndices[this.stackSize - 1]!++
+      this.peeked = PEEKED_NONE
+    } else {
+      throw this.unexpectedTokenError("END_OBJECT")
+    }
+  }
+
   peek(): CirJsonToken {
     let p = this.peeked
     if (p === PEEKED_NONE) {
@@ -183,6 +239,11 @@ export class CirJsonReader {
     this.stack[this.stackSize++] = newTop
   }
 
+  /**
+   * Returns true once `limit - pos >= minimum`. If the data is
+   * exhausted before that many characters are available, this returns
+   * false.
+   */
   private fillBuffer(minimum: number) {
     const buffer = this.buffer
     this.lineStart -= this.pos
@@ -210,6 +271,67 @@ export class CirJsonReader {
     }
 
     return false
+  }
+
+  /**
+   * Returns the next character in the stream that is neither whitespace nor a
+   * part of a comment. When this returns, the returned character is always at
+   * `buffer[pos-1]`; this means the caller can always push back the
+   * returned character by decrementing `pos`.
+   */
+  private nextNonWhitespace(throwOnEof: boolean): number {
+    /*
+     * This code uses ugly local variables 'p' and 'l' representing the 'pos'
+     * and 'limit' fields respectively. Using locals rather than fields saves
+     * a few field reads for each whitespace character in a pretty-printed
+     * document, resulting in a 5% speedup. We need to flush 'p' to its field
+     * before any (potentially indirect) call to fillBuffer() and reread both
+     * 'p' and 'l' after any (potentially indirect) call to the same method.
+     */
+    const buffer = this.buffer
+    let p = this.pos
+    let l = this.limit
+
+    while (true) {
+      if (p == l) {
+        this.pos = p
+        if (!this.fillBuffer(1)) {
+          break
+        }
+        p = this.pos
+        l = this.limit
+      }
+
+      const c = buffer[p++]
+      if (c == "\n") {
+        this.lineNumber++
+        this.lineStart = p
+        continue
+      } else if (c === " " || c === "\r" || c === "\t") {
+        continue
+      }
+
+      if (c === "/") {
+        this.pos = p
+        if (p == l) {
+          this.pos-- // push back '/' so it's still in the buffer when this method returns
+          const charsLoaded = this.fillBuffer(2)
+          this.pos++ // consume the '/' again
+          if (!charsLoaded) {
+            return c.charCodeAt(0)
+          }
+        }
+      } else {
+        this.pos = p
+        return c!.charCodeAt(0)
+      }
+
+      if (throwOnEof) {
+        throw new CirJsonError("End of input" + this.locationString())
+      } else {
+        return -1
+      }
+    }
   }
 
   /**
@@ -241,9 +363,7 @@ export class CirJsonReader {
     return ` at line ${line} column ${column} path ${this.getPath()}`
   }
 
-  private getPath(): string
-  private getPath(usePreviousPath: boolean): string
-  private getPath(usePreviousPath = false): string {
+  private internalGetPath(usePreviousPath: boolean): string {
     let result = "$"
     for (let i = 0; i < this.stackSize; i++) {
       switch (this.stack[i]) {
@@ -272,6 +392,75 @@ export class CirJsonReader {
     }
 
     return result
+  }
+
+  getPreviousPath(): string {
+    return this.internalGetPath(true)
+  }
+
+  getPath(): string {
+    return this.internalGetPath(false)
+  }
+
+  /**
+   * Unescapes the character identified by the character or characters that
+   * immediately follow a backslash. The backslash '\' should have already
+   * been read. This supports both Unicode escapes "u000A" and two-character
+   * escapes "\n".
+   *
+   * @throws MalformedJsonException if any Unicode escape sequences are
+   *     malformed.
+   */
+  private readEscapeCharacter(): string {
+    if (this.pos == this.limit && !this.fillBuffer(1)) {
+      throw this.syntaxError("Unterminated escape sequence")
+    }
+
+    const escaped = this.buffer[this.pos++]
+    switch (escaped) {
+      case "u":
+        if (this.pos + 4 > this.limit && !this.fillBuffer(4)) {
+          throw this.syntaxError("Unterminated escape sequence")
+        }
+
+        let unicodeStr = ""
+        let i = this.pos
+        for (const end = i + 4; i < end; i++) {
+          unicodeStr += this.buffer[i] as string
+        }
+
+        if (!/[A-Fa-f0-9]{4}/.test(unicodeStr)) {
+          throw this.syntaxError(`Malformed Unicode escape \\u${unicodeStr}`)
+        }
+        this.pos += 4
+        return String.fromCharCode(parseInt(unicodeStr, 16))
+      case "t":
+        return "\t"
+
+      case "b":
+        return "\b"
+
+      case "n":
+        return "\n"
+
+      case "r":
+        return "\r"
+
+      case "f":
+        return "\f"
+
+      case '"':
+      case "\\":
+      case "/":
+        return escaped
+      default:
+        // throw error when none of the above cases are matched
+        throw this.syntaxError("Invalid escape sequence")
+    }
+  }
+
+  private syntaxError(message: string): MalformedCirJsonError {
+    return new MalformedCirJsonError(message + this.locationString())
   }
 
   private unexpectedTokenError(expected: string): IllegalCirJsonStateError {
