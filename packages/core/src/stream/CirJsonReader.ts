@@ -236,13 +236,32 @@ export class CirJsonReader {
 
   private doObjectPeek(peekStack: number): number | undefined {
     if (peekStack === CirJsonScope.EMPTY_OBJECT) {
-      this.stack[this.stackSize - 1] = CirJsonScope.NON_ID_OBJECT
+      this.stack[this.stackSize - 1] = CirJsonScope.DANGLING_ID_KEY
       const c = String.fromCharCode(this.nextNonWhitespace(true))
       if (c === '"') {
         return (this.peeked = PEEKED_DOUBLE_QUOTED)
       } else {
         throw this.syntaxError("Needs the object ID")
       }
+    }
+
+    if (peekStack === CirJsonScope.NONEMPTY_OBJECT) {
+      this.stack[this.stackSize - 1] = CirJsonScope.DANGLING_NAME
+      const c = String.fromCharCode(this.nextNonWhitespace(true))
+      switch (c) {
+        case "}":
+          return (this.peeked = PEEKED_END_OBJECT)
+        case ",":
+          break
+        default:
+          throw this.syntaxError("Unterminated object")
+      }
+    }
+
+    const c = String.fromCharCode(this.nextNonWhitespace(true))
+    switch (c) {
+      case '"':
+        return (this.peeked = PEEKED_DOUBLE_QUOTED_NAME)
     }
   }
 
