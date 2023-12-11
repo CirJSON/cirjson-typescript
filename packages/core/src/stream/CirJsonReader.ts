@@ -212,6 +212,8 @@ export class CirJsonReader {
     if (objectPeek !== undefined) {
       return objectPeek
     }
+
+    this.doDanglingIdKeyPeek(peekStack)
   }
 
   private doArrayPeek(peekStack: number): number | undefined {
@@ -253,6 +255,7 @@ export class CirJsonReader {
           return (this.peeked = PEEKED_END_OBJECT)
         case ",":
           break
+        // noinspection FallThroughInSwitchStatementJS
         default:
           throw this.syntaxError("Unterminated object")
       }
@@ -262,7 +265,22 @@ export class CirJsonReader {
     switch (c) {
       case '"':
         return (this.peeked = PEEKED_DOUBLE_QUOTED_NAME)
+      case "}":
+        if (peekStack !== CirJsonScope.NONEMPTY_OBJECT) {
+          return (this.peeked = PEEKED_END_OBJECT)
+        }
+      // noinspection FallThroughInSwitchStatementJS
+      default:
+        throw this.syntaxError("Expected name")
     }
+  }
+
+  private doDanglingIdKeyPeek(peekStack: number) {
+    if (peekStack !== CirJsonScope.DANGLING_ID_KEY) {
+      return
+    }
+
+    this.stack[this.stackSize - 1] = CirJsonScope.DANGLING_ID_KEY
   }
 
   private push(newTop: number) {
