@@ -38,6 +38,7 @@ function parseArray(array: Array<unknown>, context: CirJsonParseContext) {
 
   const result: Array<unknown> = []
   context.registerStructure(arrayId, result)
+
   const realArray: Array<unknown> = array.slice(1)
   for (const realArrayElement of realArray) {
     result.push(parseUnknown(realArrayElement, context))
@@ -51,4 +52,19 @@ function parseObject(obj: Record<string, unknown>, context: CirJsonParseContext)
   if (!keys.includes(ID_KEY) || typeof obj[ID_KEY] !== "string" || obj[ID_KEY].length === 0) {
     throw new CirJsonError("The found object doesn't have an ID")
   }
+
+  const objectId = obj[ID_KEY]
+  if (context.isIdAlreadyRegistered(objectId)) {
+    return context.getStructureFromId(objectId)!
+  }
+
+  const result: Record<string, unknown> = {}
+  context.registerStructure(objectId, result)
+
+  const importantKeys = keys.filter((key) => key !== ID_KEY)
+  for (const key of importantKeys) {
+    result[key] = parseUnknown(obj[key], context)
+  }
+
+  return result
 }
