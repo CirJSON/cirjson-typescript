@@ -1,6 +1,8 @@
 import { CirJsonParseContext } from "./internal/CirJsonParseContext"
 import { CirJsonError } from "./errors/CirJsonError"
 
+const ID_KEY = "__cirJsonId__"
+
 export function parse<T>(text: string): T {
   const context = new CirJsonParseContext()
   const baseParsed = JSON.parse(text)
@@ -20,7 +22,7 @@ function parseObjectOrArray(baseParsed: object, context: CirJsonParseContext) {
     return parseArray(baseParsed, context)
   }
 
-  return
+  return parseObject(baseParsed as Record<string, unknown>, context)
 }
 
 function parseArray(array: Array<unknown>, context: CirJsonParseContext) {
@@ -38,7 +40,15 @@ function parseArray(array: Array<unknown>, context: CirJsonParseContext) {
   context.registerStructure(arrayId, result)
   const realArray: Array<unknown> = array.slice(1)
   for (const realArrayElement of realArray) {
+    result.push(parseUnknown(realArrayElement, context))
   }
 
   return result
+}
+
+function parseObject(obj: Record<string, unknown>, context: CirJsonParseContext) {
+  const keys = Object.keys(obj)
+  if (!keys.includes(ID_KEY) || typeof obj[ID_KEY] !== "string" || obj[ID_KEY].length === 0) {
+    throw new CirJsonError("The found object doesn't have an ID")
+  }
 }
