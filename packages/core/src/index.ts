@@ -1,7 +1,4 @@
-export function parse(str: string) {
-  const flattened = flatten(str)
-}
-
-function flatten(str: string): string {
-  return JSON.stringify(JSON.parse(str))
-}
+export * from "./parse"
+export * from "./stringify"
+export * from "./baseTypes"
+export * from "./errors/CirJsonError"

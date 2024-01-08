@@ -22,6 +22,11 @@
       "import": "./dist/stringify.mjs",
       "types": "./dist/stringify.d.ts",
       "require": "./dist/stringify.cjs"
+    },
+    "./globals": {
+      "import": "./dist/globals.mjs",
+      "types": "./dist/globals.d.ts",
+      "require": "./dist/globals.cjs"
     }
   },
   "dependencies": {},
