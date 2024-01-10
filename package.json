@@ -25,6 +25,7 @@
     "vitest": "^1.1.3"
   },
   "resolutions": {
-    "@cirjson/core": "workspace:*"
+    "@cirjson/core": "workspace:*",
+    "@cirjson/vite": "workspace:*"
   }
 }
