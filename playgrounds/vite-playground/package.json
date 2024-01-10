@@ -1,0 +1,24 @@
+{
+  "name": "@cirjson/vite-playground",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@cirjson/core": "^1.0.0",
+    "@cirjson/vite": "^1.0.0",
+    "vite": "^5.0.11"
+  }
+}
