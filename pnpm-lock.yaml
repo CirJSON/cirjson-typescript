@@ -6,7 +6,9 @@ settings:
 
 overrides:
   '@cirjson/core': workspace:*
+  '@cirjson/rollup': workspace:*
   '@cirjson/vite': workspace:*
+  '@cirjson/webpack': workspace:*
 
 importers:
 
@@ -58,18 +60,35 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0(typescript@5.3.3)
 
-  packages/vite:
-    dependencies:
+  packages/rollup:
+    devDependencies:
       '@cirjson/core':
         specifier: workspace:*
         version: link:../core
+      unbuild:
+        specifier: ^2.0.0
+        version: 2.0.0(typescript@5.3.3)
+
+  packages/vite:
     devDependencies:
+      '@cirjson/core':
+        specifier: workspace:*
+        version: link:../core
       unbuild:
         specifier: ^2.0.0
         version: 2.0.0(typescript@5.3.3)
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
+
+  packages/webpack:
+    devDependencies:
+      '@cirjson/core':
+        specifier: workspace:*
+        version: link:../core
+      unbuild:
+        specifier: ^2.0.0
+        version: 2.0.0(typescript@5.3.3)
 
   playgrounds/vite-playground:
     devDependencies:

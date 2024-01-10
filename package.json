@@ -26,6 +26,8 @@
   },
   "resolutions": {
     "@cirjson/core": "workspace:*",
-    "@cirjson/vite": "workspace:*"
+    "@cirjson/rollup": "workspace:*",
+    "@cirjson/vite": "workspace:*",
+    "@cirjson/webpack": "workspace:*"
   }
 }
