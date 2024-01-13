@@ -1,12 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import * as foo from "../res/foo.json"
+import fooJson from "../res/foo.json"
 
-import * as cirFoo from "../res/foo.cirjson"
+import cirFoo from "../res/foo.cirjson"
 
 console.log("logging this text")
-console.log(foo)
+console.log(fooJson)
 console.log(cirFoo)
+console.log(JSON.stringify(cirFoo))
 
 export function foo() {
   return 1 + 2

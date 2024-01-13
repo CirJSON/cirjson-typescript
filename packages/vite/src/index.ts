@@ -3,7 +3,7 @@ import { createFilter, Plugin, TransformResult } from "vite"
 
 import "@cirjson/core"
 
-import { compile, isFileSaved, loadFile } from "./compile"
+import { compile } from "./compile"
 
 interface Options {
   include: string | RegExp | Array<string | RegExp>
@@ -20,33 +20,27 @@ export default function cirJsonPlugin(options: Partial<Options> = {}): Plugin {
 
   return {
     name: "vite:CirJSON",
-    load(id) {
-      console.log(`${id}: ${filter(id)}`)
-      if (!isFileSaved(id)) {
-        const realCode = compile(id, fs.readFileSync(id, "utf-8"))
-        return {
-          code: realCode,
-          map: null,
-        }
+    resolveId(id) {
+      if (id === "@cirjson/core") {
+        // this signals that Rollup should not ask other plugins or check
+        // the file system to find this id
+        return { id: "@cirjson/core", external: true }
       }
-
-      const fileCode = loadFile(id)
+      return null // other ids should be handled as usually
+    },
+    load(id) {
       return {
-        code: fileCode,
+        code: fs.readFileSync(id, "utf-8"),
         map: null,
       }
     },
     transform(code, id, opt): TransformResult | undefined {
-      console.log(`${id}: ${filter(id)}`)
       if (!filter(id)) {
         return
       }
 
-      const realCode = compile(id, code)
-      console.log(realCode)
-
       return {
-        code: realCode,
+        code: compile(code),
         map: null,
       }
     },

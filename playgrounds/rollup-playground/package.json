@@ -1,8 +1,8 @@
 {
-  "name": "@cirjson/rollup",
+  "name": "@cirjson/rollup-playground",
   "version": "1.0.0",
   "scripts": {
-    "build": "unbuild"
+    "build": "rollup --config --configPlugin @rollup/plugin-typescript"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,12 +16,9 @@
   },
   "devDependencies": {
     "@cirjson/core": "^1.0.0",
-    "@rollup/pluginutils": "^5.1.0",
-    "rollup": "^4.9.5",
-    "unbuild": "^2.0.0"
-  },
-  "peerDependencies": {
-    "@cirjson/core": "^1.0.0",
+    "@cirjson/rollup": "^1.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-typescript": "^11.1.6",
     "rollup": "^4.9.5"
   }
 }

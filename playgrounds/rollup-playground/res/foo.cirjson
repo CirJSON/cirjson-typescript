@@ -1,0 +1,11 @@
+{
+  "__cirJsonId__": "1",
+  "foo": [
+    "2",
+    {
+      "__cirJsonId__": "1"
+    }
+  ],
+  "bar": true,
+  "toto": "tata"
+}
