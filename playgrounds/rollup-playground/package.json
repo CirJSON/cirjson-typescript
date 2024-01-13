@@ -1,6 +1,7 @@
 {
   "name": "@cirjson/rollup-playground",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
     "build": "rollup --config --configPlugin @rollup/plugin-typescript"
   },
