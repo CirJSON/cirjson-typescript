@@ -2,7 +2,8 @@
   "name": "@cirjson/rollup",
   "version": "1.0.0",
   "scripts": {
-    "build": "unbuild"
+    "build": "unbuild",
+    "prepack": "pnpm build"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
