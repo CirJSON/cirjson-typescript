@@ -1,10 +1,8 @@
 {
-  "name": "@cirjson/webpack",
+  "name": "@cirjson/webpack-playground",
   "version": "1.0.0",
-  "scripts": {
-    "build": "unbuild",
-    "prepack": "pnpm build"
-  },
+  "private": true,
+  "scripts": {},
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -15,14 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "dependencies": {},
   "devDependencies": {
     "@cirjson/core": "^1.0.0",
-    "unbuild": "^2.0.0",
-    "webpack": "^5.89.0"
-  },
-  "peerDependencies": {
-    "@cirjson/core": "^1.0.0",
+    "@cirjson/webpack": "^1.0.0",
     "webpack": "^5.89.0"
   }
 }
